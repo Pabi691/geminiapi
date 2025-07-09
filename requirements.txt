@@ -1,3 +1,4 @@
+# requirements.txt
 Flask
 Flask-Cors
-google-generativeai
+# Remove google-generativeai for this test
