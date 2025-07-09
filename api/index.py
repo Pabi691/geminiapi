@@ -7,7 +7,6 @@ from google.generativeai import GenerativeModel, configure
 app = Flask(__name__)
 CORS(app)
 
-# THIS IS THE MOST IMPORTANT DEBUG PRINT:
 @app.before_request
 def log_request_path():
     print(f"DEBUG: Incoming request path: {request.path}")
@@ -25,12 +24,14 @@ except Exception as e:
 
 model_text = GenerativeModel(model_name="gemini-pro")
 
+# This route should still be just '/' for the root domain
 @app.route('/', methods=['GET'])
 def home():
     print(f"DEBUG: Entering home route. Request path: {request.path}")
     return "API is alive! Flask is working on Vercel.", 200
 
-@app.route('/generate-design-idea', methods=['POST'])
+# CHANGE THIS ROUTE: Add '/api' prefix
+@app.route('/api/generate-design-idea', methods=['POST'])
 def generate_design_idea():
     print(f"DEBUG: Entering generate_design_idea route. Request path: {request.path}")
     try:
@@ -40,7 +41,7 @@ def generate_design_idea():
         if not user_prompt:
             print("Error: Prompt is required for generate-design-idea")
             return jsonify({'error': 'Prompt is required'}), 400
-
+        
         prompt_text = f"""Generate a short, creative slogan (max 10 words) for a T-shirt about "{user_prompt}".
         Also suggest a primary color (hex code, e.g., #RRGGBB) and a font style (e.g., 'normal', 'bold', 'italic').
         Format your response strictly as a JSON object with 'slogan', 'color', 'fontStyle' and 'fontFamily' keys.
@@ -68,7 +69,7 @@ def generate_design_idea():
                 "fontStyle": font_style_match.group(1) if font_style_match else "normal",
                 "fontFamily": font_family_match.group(1) if font_family_match else "Outfit"
             }
-
+        
         print(f"Returning design suggestion: {design_suggestion}")
         return jsonify(design_suggestion), 200
 
@@ -76,7 +77,8 @@ def generate_design_idea():
         print(f"Error in generate_design_idea: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
-@app.route('/generate-image', methods=['POST'])
+# CHANGE THIS ROUTE: Add '/api' prefix
+@app.route('/api/generate-image', methods=['POST'])
 def generate_image():
     print(f"DEBUG: Entering generate_image route. Request path: {request.path}")
     try:
@@ -88,7 +90,7 @@ def generate_image():
             return jsonify({'error': 'Prompt is required'}), 400
 
         imageUrl = "https://via.placeholder.com/200?text=AI+Generated+Image"
-
+        
         print(f"Returning image URL: {imageUrl}")
         return jsonify({'imageUrl': imageUrl}), 200
 
