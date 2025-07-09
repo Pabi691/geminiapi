@@ -5,10 +5,12 @@ from flask_cors import CORS
 from google.generativeai import GenerativeModel, configure
 
 app = Flask(__name__)
-CORS(app) # Allow all origins for now
+CORS(app)
 
-# --- ADD THIS LINE ---
-print(f"Flask app initialized. Request path when hit: {request.path if request else 'No request yet'}")
+# THIS IS THE MOST IMPORTANT DEBUG PRINT:
+@app.before_request
+def log_request_path():
+    print(f"DEBUG: Incoming request path: {request.path}")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -25,15 +27,12 @@ model_text = GenerativeModel(model_name="gemini-pro")
 
 @app.route('/', methods=['GET'])
 def home():
-    # --- ADD THIS LINE ---
     print(f"DEBUG: Entering home route. Request path: {request.path}")
     return "API is alive! Flask is working on Vercel.", 200
 
 @app.route('/generate-design-idea', methods=['POST'])
 def generate_design_idea():
-    # --- ADD THIS LINE ---
     print(f"DEBUG: Entering generate_design_idea route. Request path: {request.path}")
-    # ... rest of your code ...
     try:
         data = request.get_json()
         user_prompt = data.get('prompt')
@@ -42,7 +41,6 @@ def generate_design_idea():
             print("Error: Prompt is required for generate-design-idea")
             return jsonify({'error': 'Prompt is required'}), 400
 
-        # ... rest of your design idea logic ...
         prompt_text = f"""Generate a short, creative slogan (max 10 words) for a T-shirt about "{user_prompt}".
         Also suggest a primary color (hex code, e.g., #RRGGBB) and a font style (e.g., 'normal', 'bold', 'italic').
         Format your response strictly as a JSON object with 'slogan', 'color', 'fontStyle' and 'fontFamily' keys.
@@ -51,7 +49,7 @@ def generate_design_idea():
 
         response = model_text.generate_content(prompt_text)
         ai_response_text = response.text
-        print(f"AI raw response for design idea: {ai_response_text}") # Log raw AI response
+        print(f"AI raw response for design idea: {ai_response_text}")
 
         design_suggestion = {}
         try:
@@ -78,12 +76,9 @@ def generate_design_idea():
         print(f"Error in generate_design_idea: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
-
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
-    # --- ADD THIS LINE ---
     print(f"DEBUG: Entering generate_image route. Request path: {request.path}")
-    # ... rest of your code ...
     try:
         data = request.get_json()
         user_prompt = data.get('prompt')
