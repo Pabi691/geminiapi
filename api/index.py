@@ -7,32 +7,33 @@ from google.generativeai import GenerativeModel, configure
 app = Flask(__name__)
 CORS(app) # Allow all origins for now
 
+# --- ADD THIS LINE ---
+print(f"Flask app initialized. Request path when hit: {request.path if request else 'No request yet'}")
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY is not set. API calls will likely fail.")
-    # For robust production, you might raise an error here
-    # or return an error response, e.g.:
-    # return jsonify({'error': 'Server configuration error: API key missing'}), 500
 
 try:
     configure(api_key=GEMINI_API_KEY)
     print("Google Generative AI configured successfully.")
 except Exception as e:
     print(f"ERROR: Failed to configure Google Generative AI: {e}")
-    # Consider handling this more gracefully if you want the app to partially work
 
 model_text = GenerativeModel(model_name="gemini-pro")
 
-# Your simple root route (optional, but good for health checks)
 @app.route('/', methods=['GET'])
 def home():
-    print("Received GET request for /")
-    return "API is alive! Flask is working on Vercel.Working.", 200
+    # --- ADD THIS LINE ---
+    print(f"DEBUG: Entering home route. Request path: {request.path}")
+    return "API is alive! Flask is working on Vercel.", 200
 
 @app.route('/generate-design-idea', methods=['POST'])
 def generate_design_idea():
-    print("Received request for /generate-design-idea")
+    # --- ADD THIS LINE ---
+    print(f"DEBUG: Entering generate_design_idea route. Request path: {request.path}")
+    # ... rest of your code ...
     try:
         data = request.get_json()
         user_prompt = data.get('prompt')
@@ -41,6 +42,7 @@ def generate_design_idea():
             print("Error: Prompt is required for generate-design-idea")
             return jsonify({'error': 'Prompt is required'}), 400
 
+        # ... rest of your design idea logic ...
         prompt_text = f"""Generate a short, creative slogan (max 10 words) for a T-shirt about "{user_prompt}".
         Also suggest a primary color (hex code, e.g., #RRGGBB) and a font style (e.g., 'normal', 'bold', 'italic').
         Format your response strictly as a JSON object with 'slogan', 'color', 'fontStyle' and 'fontFamily' keys.
@@ -68,7 +70,7 @@ def generate_design_idea():
                 "fontStyle": font_style_match.group(1) if font_style_match else "normal",
                 "fontFamily": font_family_match.group(1) if font_family_match else "Outfit"
             }
-        
+
         print(f"Returning design suggestion: {design_suggestion}")
         return jsonify(design_suggestion), 200
 
@@ -76,9 +78,12 @@ def generate_design_idea():
         print(f"Error in generate_design_idea: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
+
 @app.route('/generate-image', methods=['POST'])
 def generate_image():
-    print("Received request for /generate-image")
+    # --- ADD THIS LINE ---
+    print(f"DEBUG: Entering generate_image route. Request path: {request.path}")
+    # ... rest of your code ...
     try:
         data = request.get_json()
         user_prompt = data.get('prompt')
@@ -87,15 +92,8 @@ def generate_image():
             print("Error: Prompt is required for generate-image")
             return jsonify({'error': 'Prompt is required'}), 400
 
-        # IMPORTANT: Placeholder for actual image generation logic
-        # You need to integrate a real text-to-image API here (e.g., Stability AI, DALL-E 3)
-        # The 'google-generativeai' library primarily focuses on text/multimodal content,
-        # not direct text-to-image generation that returns image URLs for Konva.js.
-        # You would typically sign up for an API key with an image generation service.
+        imageUrl = "https://via.placeholder.com/200?text=AI+Generated+Image"
 
-        # For demonstration purposes, we return a placeholder image URL:
-        imageUrl = "https://via.placeholder.com/200?text=AI+Generated+Image" # Replace with actual image URL from your AI service
-        
         print(f"Returning image URL: {imageUrl}")
         return jsonify({'imageUrl': imageUrl}), 200
 
