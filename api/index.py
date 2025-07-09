@@ -28,7 +28,7 @@ model_text = GenerativeModel(model_name="gemini-pro")
 @app.route('/', methods=['GET'])
 def home():
     print("Received GET request for /")
-    return "API is alive! Flask is working on Vercel.", 200
+    return "API is alive! Flask is working on Vercel.Working.", 200
 
 @app.route('/generate-design-idea', methods=['POST'])
 def generate_design_idea():
