@@ -1,11 +1,17 @@
+# import os
+# import json
+# import time
+# import re
+# from flask import Flask, request, jsonify
+# from flask_cors import CORS
+# from google.generativeai import GenerativeModel, configure
+# from google.generativeai.types import GenerativeAIError
 import os
 import json
-import time
-import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.generativeai import GenerativeModel, configure
-from google.generativeai.types import GenerativeAIError
+
 
 app = Flask(__name__)
 CORS(app)
