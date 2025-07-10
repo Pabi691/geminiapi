@@ -19,8 +19,23 @@ if not GEMINI_API_KEY:
 try:
     configure(api_key=GEMINI_API_KEY)
     print("Google Generative AI configured successfully.")
+
+    print("\n--- Listing available Gemini models ---")
+    found_gemini_pro_generate_content = False
+    # Ensure 'models' is imported from google.generativeai
+    from google.generativeai import models 
+    for m in models.list_models():
+        print(f"  Model: {m.name}, Supported Methods: {m.supported_generation_methods}")
+        if m.name == 'models/gemini-pro' and 'generateContent' in m.supported_generation_methods:
+            found_gemini_pro_generate_content = True
+    print("--- End of model list ---")
+    if found_gemini_pro_generate_content:
+        print("SUCCESS: models/gemini-pro supports generateContent for this key.")
+    else:
+        print("WARNING: models/gemini-pro does NOT support generateContent for this key/region!")
+        print("Consider checking your API key, region, or trying a different model if available.")
 except Exception as e:
-    print(f"ERROR: Failed to configure Google Generative AI: {e}")
+    print(f"ERROR: Failed to configure Google Generative AI or list models: {e}")
 
 model_text = GenerativeModel(model_name="gemini-pro")
 
