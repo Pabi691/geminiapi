@@ -38,7 +38,7 @@ except Exception as e:
     print(f"ERROR: Failed to configure Google Generative AI or list models: {e}")
 
 # model_text = GenerativeModel(model_name="gemini-pro")
-model_text = GenerativeModel(model_name="gemini-1.5-pro")
+model_text = GenerativeModel(model_name="gemini-2.5-pro")
 
 # This route should still be just '/' for the root domain
 @app.route('/', methods=['GET'])
