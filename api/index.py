@@ -1,17 +1,10 @@
-# import os
-# import json
-# import time
-# import re
-# from flask import Flask, request, jsonify
-# from flask_cors import CORS
-# from google.generativeai import GenerativeModel, configure
-# from google.generativeai.types import GenerativeAIError
 import os
 import json
+import time
+import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.generativeai import GenerativeModel, configure
-
 
 app = Flask(__name__)
 CORS(app)
@@ -85,7 +78,7 @@ def generate_design_idea():
                 response = model_text.generate_content(prompt_text)
                 ai_response_text = response.text
                 break
-            except GenerativeAIError as e:
+            except Exception as e:
                 if "429" in str(e) or "quota" in str(e).lower():
                     if attempt < max_retries:
                         wait_time = retry_delay_sec * attempt
