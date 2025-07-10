@@ -13,7 +13,7 @@ def log_request_path():
 
 # GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 #AIzaSyDu_0T5kzELgoPFmPM46mbaJfnWVzHlm0c
-GEMINI_API_KEY = "AIzaSyDXl88oITm3P3_-kQQ-ji_Zq3ocgPEzXaM"
+GEMINI_API_KEY = "AIzaSyDu_0T5kzELgoPFmPM46mbaJfnWVzHlm0c"
 
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY is not set. API calls will likely fail.")
