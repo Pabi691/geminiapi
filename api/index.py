@@ -40,7 +40,7 @@ except Exception as e:
     print(f"ERROR: Failed to configure Google Generative AI or list models: {e}")
 
 # Initialize the model
-model_text = GenerativeModel(model_name="gemini-1.5-pro")
+model_text = GenerativeModel(model_name="gemini-2.5-pro")
 
 # Root route
 @app.route('/', methods=['GET'])
