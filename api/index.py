@@ -11,9 +11,7 @@ CORS(app)
 def log_request_path():
     print(f"DEBUG: Incoming request path: {request.path}")
 
-# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-#AIzaSyDu_0T5kzELgoPFmPM46mbaJfnWVzHlm0c
-GEMINI_API_KEY = "AIzaSyDu_0T5kzELgoPFmPM46mbaJfnWVzHlm0c"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY is not set. API calls will likely fail.")
