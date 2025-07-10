@@ -4,7 +4,8 @@ import time
 import re
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from google.generativeai import GenerativeModel, configure
+# from google.generativeai import GenerativeModel, configure
+from google.generativeai import GenerativeModel, configure, models
 
 app = Flask(__name__)
 CORS(app)
@@ -131,13 +132,23 @@ def generate_image():
             print("Error: Prompt is required for generate-image")
             return jsonify({'error': 'Prompt is required'}), 400
 
-        # Placeholder logic
-        imageUrl = "https://via.placeholder.com/200?text=AI+Generated+Image"
-        # imageUrl = "https://picsum.photos/200/200"
+        image_model = GenerativeModel('models/imagen-3')  # Use actual image model
 
-        
-        print(f"Returning image URL: {imageUrl}")
-        return jsonify({'imageUrl': imageUrl}), 200
+        # Generate image content
+        response = image_model.generate_content(user_prompt)
+        print("Image generation response received")
+
+        # Get the image URL or base64 content
+        image_data = response.images[0]  # Or response.parts[0].inline_data
+        if hasattr(image_data, 'url'):
+            image_url = image_data.url
+        else:
+            # Convert to base64 and return (if image is inline)
+            import base64
+            image_base64 = base64.b64encode(image_data).decode("utf-8")
+            image_url = f"data:image/png;base64,{image_base64}"
+
+        return jsonify({'imageUrl': image_url}), 200
 
     except Exception as e:
         print(f"Error in generate_image: {e}")
