@@ -132,8 +132,8 @@ def generate_image():
             return jsonify({'error': 'Prompt is required'}), 400
 
         # Placeholder logic
-        # imageUrl = "https://via.placeholder.com/200?text=AI+Generated+Image"
-        imageUrl = "https://picsum.photos/200/200"
+        imageUrl = "https://via.placeholder.com/200?text=AI+Generated+Image"
+        # imageUrl = "https://picsum.photos/200/200"
 
         
         print(f"Returning image URL: {imageUrl}")
