@@ -2,10 +2,16 @@ import os
 import json
 import time
 import re
+import base64
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-# from google.generativeai import GenerativeModel, configure
-from google.generativeai import GenerativeModel, configure, models
+
+from google import genai
+from google.genai import types
+
+# -------------------------------
+# Flask App
+# -------------------------------
 
 app = Flask(__name__)
 CORS(app)
@@ -14,40 +20,33 @@ CORS(app)
 def log_request_path():
     print(f"DEBUG: Incoming request path: {request.path}")
 
-# Fetch API key from environment
+# -------------------------------
+# Gemini Configuration
+# -------------------------------
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY is not set. API calls will likely fail.")
 
-try:
-    configure(api_key=GEMINI_API_KEY)
-    print("Google Generative AI configured successfully.")
+# Configure Gemini SDK
+genai.configure(api_key=GEMINI_API_KEY)
 
-    # Optional: list models to confirm access
-    from google.generativeai import models
-    found_gemini_pro_generate_content = False
-    print("\n--- Listing available Gemini models ---")
-    for m in models.list_models():
-        print(f"  Model: {m.name}, Supported Methods: {m.supported_generation_methods}")
-        if m.name == 'models/gemini-pro' and 'generateContent' in m.supported_generation_methods:
-            found_gemini_pro_generate_content = True
-    print("--- End of model list ---")
-    if found_gemini_pro_generate_content:
-        print("SUCCESS: models/gemini-pro supports generateContent for this key.")
-    else:
-        print("WARNING: models/gemini-pro does NOT support generateContent for this key/region!")
-except Exception as e:
-    print(f"ERROR: Failed to configure Google Generative AI or list models: {e}")
+# Create Gemini Client
+client = genai.Client()
 
-# Initialize the model
-model_text = GenerativeModel(model_name="gemini-2.5-pro")
+# -------------------------------
+# Root
+# -------------------------------
 
-# Root route
 @app.route('/', methods=['GET'])
 def home():
     print(f"DEBUG: Entering home route. Request path: {request.path}")
     return "API is alive! Flask is working on Vercel.", 200
+
+# -------------------------------
+# Generate Design Idea (Text)
+# -------------------------------
 
 @app.route('/api/generate-design-idea', methods=['POST'])
 def generate_design_idea():
@@ -60,7 +59,6 @@ def generate_design_idea():
             print("Error: Prompt is required for generate-design-idea")
             return jsonify({'error': 'Prompt is required'}), 400
 
-        # Shortened prompt for fewer tokens
         prompt_text = (
             f"Create a short, catchy T-shirt slogan (max 10 words) about \"{user_prompt}\". "
             f"Suggest a color hex code and a font style (e.g. bold, italic) "
@@ -71,37 +69,20 @@ def generate_design_idea():
             f"\"fontStyle\": \"bold\", \"fontFamily\": \"Outfit\"}}"
         )
 
-        # Retry logic for 429 errors
-        max_retries = 3
-        retry_delay_sec = 10
-        for attempt in range(1, max_retries + 1):
-            try:
-                response = model_text.generate_content(prompt_text)
-                ai_response_text = response.text
-                break
-            except Exception as e:
-                if "429" in str(e) or "quota" in str(e).lower():
-                    if attempt < max_retries:
-                        wait_time = retry_delay_sec * attempt
-                        print(f"Rate limit hit. Retrying in {wait_time} seconds...")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        print("Exceeded max retries due to rate limits.")
-                        return jsonify({
-                            'error': 'Rate limit exceeded. Try again later.'
-                        }), 429
-                else:
-                    raise e
+        # Call Gemini text model
+        response = client.models.generate_content(
+            model="gemini-2.5-pro",
+            contents=prompt_text
+        )
+        ai_response_text = response.candidates[0].content.parts[0].text
 
         print(f"AI raw response for design idea: {ai_response_text}")
 
-        # Parse JSON or fallback
+        # Try parsing JSON
         try:
             design_suggestion = json.loads(ai_response_text)
         except json.JSONDecodeError:
             print(f"Warning: AI response not perfect JSON for design idea: {ai_response_text}")
-            # Regex extraction fallback
             slogan_match = re.search(r'"slogan"\s*:\s*"(.*?)"', ai_response_text)
             color_match = re.search(r'"color"\s*:\s*"(#[\da-fA-F]{6})"', ai_response_text)
             font_style_match = re.search(r'"fontStyle"\s*:\s*"(.*?)"', ai_response_text)
@@ -121,6 +102,10 @@ def generate_design_idea():
         print(f"Error in generate_design_idea: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
+# -------------------------------
+# Generate Image
+# -------------------------------
+
 @app.route('/api/generate-image', methods=['POST'])
 def generate_image():
     print(f"DEBUG: Entering generate_image route. Request path: {request.path}")
@@ -132,24 +117,41 @@ def generate_image():
             print("Error: Prompt is required for generate-image")
             return jsonify({'error': 'Prompt is required'}), 400
 
-        image_model = GenerativeModel('models/imagen-3')  # Use actual image model
+        # Call Gemini image model
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-preview-image-generation",
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"]
+            )
+        )
 
-        # Generate image content
-        response = image_model.generate_content(user_prompt)
-        print("Image generation response received")
+        image_base64 = None
 
-        # Get the image URL or base64 content
-        image_data = response.images[0]  # Or response.parts[0].inline_data
-        if hasattr(image_data, 'url'):
-            image_url = image_data.url
-        else:
-            # Convert to base64 and return (if image is inline)
-            import base64
-            image_base64 = base64.b64encode(image_data).decode("utf-8")
-            image_url = f"data:image/png;base64,{image_base64}"
+        for part in response.candidates[0].content.parts:
+            if part.text is not None:
+                print("Model text:", part.text)
+            elif part.inline_data is not None:
+                # Convert bytes → base64 string
+                image_bytes = part.inline_data.data
+                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
-        return jsonify({'imageUrl': image_url}), 200
+        if not image_base64:
+            return jsonify({"error": "No image generated."}), 500
+
+        # Create a data URL
+        image_url = f"data:image/png;base64,{image_base64}"
+        print(f"Generated image data URL length: {len(image_url)}")
+
+        return jsonify({"imageUrl": image_url}), 200
 
     except Exception as e:
         print(f"Error in generate_image: {e}")
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+
+# -------------------------------
+# Run Locally
+# -------------------------------
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
