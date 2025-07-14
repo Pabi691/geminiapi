@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 import google.generativeai as genai
-from google.generativeai import types # Corrected import from previous step
+from google.generativeai import types
 
 # -------------------------------
 # Flask App
@@ -32,9 +32,6 @@ if not GEMINI_API_KEY:
 # Configure Gemini SDK
 genai.configure(api_key=GEMINI_API_KEY)
 
-# IMPORTANT CHANGE: Remove the client = genai.Client() line.
-# The google.generativeai library is designed to be used directly through the 'genai' module
-# or by creating model instances like genai.GenerativeModel().
 # -------------------------------
 # Root
 # -------------------------------
@@ -69,18 +66,15 @@ def generate_design_idea():
             f"\"fontStyle\": \"bold\", \"fontFamily\": \"Outfit\"}}"
         )
 
-        # IMPORTANT CHANGE: Get the model instance directly from genai
         model = genai.GenerativeModel("gemini-2.5-pro")
 
-        # Call Gemini text model using the model instance
-        response = model.generate_content( # Changed from client.models.generate_content
+        response = model.generate_content(
             contents=prompt_text
         )
         ai_response_text = response.candidates[0].content.parts[0].text
 
         print(f"AI raw response for design idea: {ai_response_text}")
 
-        # Try parsing JSON
         try:
             design_suggestion = json.loads(ai_response_text)
         except json.JSONDecodeError:
@@ -119,40 +113,49 @@ def generate_image():
             print("Error: Prompt is required for generate-image")
             return jsonify({'error': 'Prompt is required'}), 400
 
-        # IMPORTANT CHANGE: Get the model instance directly from genai
-        # For image generation, the model name is different.
-        model = genai.GenerativeModel("gemini-2.0-flash-preview-001") # Using a stable image model name
+        # Note: The 'gemini-2.0-flash-preview-001' model is NOT designed for direct
+        # text-to-image generation output via response_mime_type="image/png".
+        # It's primarily for text responses, even with multi-modal inputs.
+        # To generate images, you need a dedicated image generation API/service.
 
-        # Call Gemini image model using the model instance
-        response = model.generate_content( # Changed from client.models.generate_content
-            contents=[user_prompt], # Contents should be a list of parts, if it's just text, it can be [user_prompt]
-            generation_config=types.GenerationConfig( # IMPORTANT: Changed 'config' to 'generation_config'
-                response_mime_type="image/png" # IMPORTANT: Use response_mime_type for direct image output
-            )
+        model = genai.GenerativeModel("gemini-2.0-flash-preview-001")
+
+        response = model.generate_content(
+            contents=[user_prompt]
+            # Removed: generation_config because 'image/png' is not an allowed output MIME type for this model.
+            # This model will generate text, not a direct image.
         )
 
         image_base64 = None
+        generated_text_response = None
 
         for part in response.candidates[0].content.parts:
-            # Check for inline_data to get the image
             if part.inline_data is not None:
+                # This block will likely NOT be reached as this model doesn't output inline_data for text-to-image
                 image_bytes = part.inline_data.data
                 image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-                break # Once image is found, break the loop
+                print("DEBUG: Image data received (unlikely with this model/config).")
+                break
             elif part.text is not None:
-                # Log any text responses, but we expect an image here
-                print("Model text (unexpected for image output):", part.text)
+                generated_text_response = part.text
+                print(f"DEBUG: Model returned text response: {generated_text_response}")
+                break # Get the first text part and break
 
-
-        if not image_base64:
-            print("Error: No image base64 data found in Gemini response.")
-            return jsonify({"error": "No image generated."}), 500
-
-        # Create a data URL
-        image_url = f"data:image/png;base64,{image_base64}"
-        print(f"Generated image data URL length: {len(image_url)}")
-
-        return jsonify({"imageUrl": image_url}), 200
+        if image_base64:
+            # If by some chance image data IS received (e.g., if model capabilities change or for other model types)
+            image_url = f"data:image/png;base64,{image_base64}"
+            print(f"DEBUG: Generated image data URL length: {len(image_url)}")
+            return jsonify({"imageUrl": image_url}), 200
+        else:
+            # This path is the most likely outcome with gemini-2.0-flash-preview-001
+            print(f"ERROR: Image generation not supported. Model provided text or no image data.")
+            return jsonify({
+                "error": "Image generation not directly supported by the current model with this configuration.",
+                "details": "The 'gemini-2.0-flash-preview-001' model does not output images directly. "
+                           "It is primarily a text-generating model. If you need text-to-image functionality, "
+                           "please use a dedicated image generation API (e.g., Google Cloud's Imagen, DALL-E, Stable Diffusion).",
+                "model_text_response": generated_text_response # Return any text response from the model
+            }), 500
 
     except Exception as e:
         print(f"Error in generate_image: {e}")
