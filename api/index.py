@@ -1,31 +1,14 @@
 import os
-import json
 import base64
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
 import google.generativeai as genai
 
 app = Flask(__name__)
 CORS(app)
 
-# ------------------------------------------------
-# Gemini Configuration
-# ------------------------------------------------
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    print("WARNING: GEMINI_API_KEY is not set. API calls will likely fail.")
-
-genai.configure(api_key=GEMINI_API_KEY)
-
-# ------------------------------------------------
-# Routes
-# ------------------------------------------------
-
-@app.route("/")
-def home():
-    return "API is alive!", 200
+# Configure Gemini
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
 @app.route("/api/generate-image", methods=["POST"])
 def generate_image():
@@ -40,23 +23,8 @@ def generate_image():
             model_name="gemini-2.0-flash-preview-image-generation"
         )
 
-        # Note:
-        # - Use dicts, not types.SafetySetting
-        # - Correct key: response_modalities (plural)
-
-        response = model.generate_content(
-            contents=[user_prompt],
-            generation_config={
-                "response_mime_type": "application/json",
-            },
-            safety_settings=[
-                {
-                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    "threshold": "BLOCK_NONE"
-                }
-            ],
-            response_modalities=["TEXT", "IMAGE"]
-        )
+        # Correct call — no response_modality argument
+        response = model.generate_content(user_prompt)
 
         result_text = None
         image_base64 = None
@@ -65,6 +33,7 @@ def generate_image():
             if part.text is not None:
                 result_text = part.text
             elif part.inline_data is not None:
+                # Extract the image bytes and convert to base64
                 image_bytes = part.inline_data.data
                 image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
@@ -75,17 +44,16 @@ def generate_image():
             }), 200
         else:
             return jsonify({
-                "error": "No image was returned.",
+                "error": "No image returned.",
                 "text": result_text
             }), 500
 
     except Exception as e:
-        print(f"Error in generate_image: {e}")
-        return jsonify({"error": "Internal server error", "details": str(e)}), 500
-
-# ------------------------------------------------
-# Run Locally
-# ------------------------------------------------
+        print("Error in generate_image:", e)
+        return jsonify({
+            "error": "Internal server error",
+            "details": str(e)
+        }), 500
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
