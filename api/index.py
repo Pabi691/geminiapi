@@ -7,8 +7,11 @@ import google.generativeai as genai
 app = Flask(__name__)
 CORS(app)
 
-# Configure Gemini
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Hello, Flask is working.", 200
 
 @app.route("/api/generate-image", methods=["POST"])
 def generate_image():
@@ -23,7 +26,6 @@ def generate_image():
             model_name="gemini-2.0-flash-preview-image-generation"
         )
 
-        # Correct call — no response_modality argument
         response = model.generate_content(user_prompt)
 
         result_text = None
@@ -33,7 +35,6 @@ def generate_image():
             if part.text is not None:
                 result_text = part.text
             elif part.inline_data is not None:
-                # Extract the image bytes and convert to base64
                 image_bytes = part.inline_data.data
                 image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
