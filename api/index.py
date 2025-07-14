@@ -6,10 +6,8 @@ import base64
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# from google import genai
 import google.generativeai as genai
-
-from google.generativeai import types
+from google.generativeai import types # Corrected import from previous step
 
 # -------------------------------
 # Flask App
@@ -34,9 +32,9 @@ if not GEMINI_API_KEY:
 # Configure Gemini SDK
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Create Gemini Client
-client = genai.Client()
-
+# IMPORTANT CHANGE: Remove the client = genai.Client() line.
+# The google.generativeai library is designed to be used directly through the 'genai' module
+# or by creating model instances like genai.GenerativeModel().
 # -------------------------------
 # Root
 # -------------------------------
@@ -71,9 +69,11 @@ def generate_design_idea():
             f"\"fontStyle\": \"bold\", \"fontFamily\": \"Outfit\"}}"
         )
 
-        # Call Gemini text model
-        response = client.models.generate_content(
-            model="gemini-2.5-pro",
+        # IMPORTANT CHANGE: Get the model instance directly from genai
+        model = genai.GenerativeModel("gemini-2.5-pro")
+
+        # Call Gemini text model using the model instance
+        response = model.generate_content( # Changed from client.models.generate_content
             contents=prompt_text
         )
         ai_response_text = response.candidates[0].content.parts[0].text
@@ -119,27 +119,33 @@ def generate_image():
             print("Error: Prompt is required for generate-image")
             return jsonify({'error': 'Prompt is required'}), 400
 
-        # Call Gemini image model
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-preview-image-generation",
-            contents=[{"role": "user", "parts": [user_prompt]}],
-            config=types.GenerateContentConfig(
-                response_modalities=["TEXT", "IMAGE"]
+        # IMPORTANT CHANGE: Get the model instance directly from genai
+        # For image generation, the model name is different.
+        model = genai.GenerativeModel("gemini-2.0-flash-preview-001") # Using a stable image model name
+
+        # Call Gemini image model using the model instance
+        response = model.generate_content( # Changed from client.models.generate_content
+            contents=[user_prompt], # Contents should be a list of parts, if it's just text, it can be [user_prompt]
+            generation_config=types.GenerateContentConfig( # IMPORTANT: Changed 'config' to 'generation_config'
+                response_mime_type="image/png" # IMPORTANT: Use response_mime_type for direct image output
             )
         )
-
 
         image_base64 = None
 
         for part in response.candidates[0].content.parts:
-            if part.text is not None:
-                print("Model text:", part.text)
-            elif part.inline_data is not None:
-                # Convert bytes → base64 string
+            # Check for inline_data to get the image
+            if part.inline_data is not None:
                 image_bytes = part.inline_data.data
                 image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+                break # Once image is found, break the loop
+            elif part.text is not None:
+                # Log any text responses, but we expect an image here
+                print("Model text (unexpected for image output):", part.text)
+
 
         if not image_base64:
+            print("Error: No image base64 data found in Gemini response.")
             return jsonify({"error": "No image generated."}), 500
 
         # Create a data URL
