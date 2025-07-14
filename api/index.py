@@ -126,7 +126,7 @@ def generate_image():
         # Call Gemini image model using the model instance
         response = model.generate_content( # Changed from client.models.generate_content
             contents=[user_prompt], # Contents should be a list of parts, if it's just text, it can be [user_prompt]
-            generation_config=types.GenerateContentConfig( # IMPORTANT: Changed 'config' to 'generation_config'
+            generation_config=types.GenerationConfig( # IMPORTANT: Changed 'config' to 'generation_config'
                 response_mime_type="image/png" # IMPORTANT: Use response_mime_type for direct image output
             )
         )
