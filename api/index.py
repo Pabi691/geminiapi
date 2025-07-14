@@ -122,11 +122,12 @@ def generate_image():
         # Call Gemini image model
         response = client.models.generate_content(
             model="gemini-2.0-flash-preview-image-generation",
-            contents=user_prompt,
+            contents=[{"role": "user", "parts": [user_prompt]}],
             config=types.GenerateContentConfig(
                 response_modalities=["TEXT", "IMAGE"]
             )
         )
+
 
         image_base64 = None
 
