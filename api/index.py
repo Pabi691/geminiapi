@@ -5,8 +5,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 import google.generativeai as genai
-from google.generativeai import types
-
 
 app = Flask(__name__)
 CORS(app)
@@ -42,20 +40,22 @@ def generate_image():
             model_name="gemini-2.0-flash-preview-image-generation"
         )
 
-        # Call with proper modalities
+        # Note:
+        # - Use dicts, not types.SafetySetting
+        # - Correct key: response_modalities (plural)
+
         response = model.generate_content(
             contents=[user_prompt],
-            generation_config=types.GenerationConfig(
-                response_mime_type="application/json"
-            ),
+            generation_config={
+                "response_mime_type": "application/json",
+            },
             safety_settings=[
-                types.SafetySetting(
-                    category="HARM_CATEGORY_DANGEROUS_CONTENT",
-                    threshold="BLOCK_NONE"
-                )
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                }
             ],
-            # The KEY fix:
-            response_modality=["TEXT", "IMAGE"]
+            response_modalities=["TEXT", "IMAGE"]
         )
 
         result_text = None
@@ -69,7 +69,6 @@ def generate_image():
                 image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
         if image_base64:
-            # Return base64 Data URL
             return jsonify({
                 "imageUrl": f"data:image/png;base64,{image_base64}",
                 "text": result_text
